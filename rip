@@ -1,0 +1,1286 @@
+---
+title: "Working with Factorials, Probability and the BiNomial Distribution"
+author: "Allen"
+date: "2025-02-04"
+output: html_document
+---
+## 1. basic ! operator
+
+```{r setup, include=FALSE}
+# Calculate 5! (5 factorial)
+result_factorial <- factorial(50)/factorial(49)
+#result_factorial <- factorial(6)
+print(result_factorial)  
+```
+
+## 2 dice all propbs list;
+
+```{r}
+# Create all possible outcomes for two dice
+dice_outcomes <- expand.grid(Die1 = 1:6, Die2 = 1:6)
+# Calculate the sum of the two dice for each outcome
+dice_outcomes$Sum <- dice_outcomes$Die1 + dice_outcomes$Die2
+
+# Tabulate the frequency of each sum
+sum_freq <- table(dice_outcomes$Sum)
+print(sum_freq)
+
+# Calculate the probability distribution (each outcome out of 36)
+prob_distribution <- sum_freq / 36
+print(prob_distribution)
+
+# Identify the most common and least common outcomes
+most_common <- names(prob_distribution)[prob_distribution == max(prob_distribution)]
+least_common <- names(prob_distribution)[prob_distribution == min(prob_distribution)]
+
+cat("The most common outcome is a sum of:", most_common, "\n")
+cat("The least common outcomes are a sum of:", paste(least_common, collapse = ", "), "\n")
+
+```
+# Question 3
+
+```{r}
+
+nCr <- function(n, r) {
+  return(factorial(n) / (factorial(r) * factorial(n - r)))
+}
+
+# Single roll probability of obtaining a sum > 8.
+p <- 10 / 36   # approximately 0.2778
+cat("Single-roll probability (p) of a sum > 8:", p, "\n")
+
+# Single roll probability of obtaining a sum > 8. Systomatically understand because must be listed? 
+
+totalCombCt = 6^2;
+validCombCt = 4+3+2+1 # no easy way. Formula is complex
+p <- validCombCt / totalCombCt 
+cat("Single-roll probability (p) of a sum > 8:", p, "\n")
+
+# note, 10 roll is not 10x one roll probablity; but (One-roll_prob)^10
+# so
+k <- (1-p)^10 
+k <- 1-k
+
+cat("Using concepts from the video on the binomial distribution, if you roll two dice 10 times, what is the probability rolling a number (i.e., combination of the two die) higher than 8? Answer: ", k, "\n")
+
+
+```
+# Extension
+
+```{r}
+
+# Impossible to list. Impossible to manual. Big search space. First compute probability constants then pnorm calc https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/Normal
+
+# Number of dice rolled in each trial
+n_dice <- 68
+
+# Mean and variance for one die
+mean_die <- 3.5
+var_die <- 35/12  # approximately 2.91667
+
+# Mean and standard deviation for the sum of n_dice
+mean_sum <- n_dice * mean_die       # 74 * 3.5 = 259
+sd_sum   <- sqrt(n_dice * var_die)    # sqrt(74 * 35/12)
+
+# Define the target sum range with continuity correction:
+# We want P(100 <= X <= 200). With continuity correction,
+# use lower bound = 99.5 and upper bound = 200.5.
+lower_bound <- 100 - 0.5   # 99.5
+upper_bound <- 200 + 0.5   # 200.5
+
+# Compute the probability for a single roll using the normal approximation
+p_single <- pnorm(upper_bound, mean = mean_sum, sd = sd_sum) - 
+            pnorm(lower_bound, mean = mean_sum, sd = sd_sum)
+cat("Single-roll probability (p) that the sum is between 100 and 200:", p_single, "\n")
+
+# Number of independent trials (rolls)
+n_trials <- 67
+
+# The probability that in a given trial the event does NOT occur is (1 - p_single)
+# The probability that it never occurs in n_trials is (1 - p_single)^n_trials
+# Therefore, the probability of at least one occurrence is:
+p_at_least_one <- 1 - (1 - p_single)^n_trials
+cat("Probability that in", n_trials, "trials at least one roll has a sum between 100 and 200:", 
+    p_at_least_one, "\n")
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+# STOCK
+
+
+
+
+```{r}
+
+
+# Install necessary packages if they are not already installed
+if (!require("quantmod")) install.packages("quantmod")
+if (!require("tidyquant")) install.packages("tidyquant")
+if (!require("ggplot2")) install.packages("ggplot2")
+
+# Load the libraries
+library(quantmod)
+library(tidyquant)
+library(ggplot2)
+
+# Set the ticker symbol for LUNR
+ticker <- "LUNR"
+
+# Download stock data for LUNR from Yahoo Finance
+# You can adjust the 'from' date as desired
+stock_data <- tq_get(ticker, from = "2022-01-01", to = Sys.Date())
+
+# Check the first few rows of the data
+head(stock_data)
+
+# Plot the adjusted closing price over time using ggplot2
+ggplot(stock_data, aes(x = date, y = adjusted)) +
+  geom_line(color = "steelblue", size = 1) +
+  labs(title = paste(ticker, "Stock Price"),
+       subtitle = "Adjusted Closing Prices",
+       x = "Date",
+       y = "Price (USD)") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 14),
+        plot.subtitle = element_text(size = 12))
+
+```
+
+############################
+#############################
+####MAIN
+Intermittently working
+
+###########################################################
+
+
+```{r}
+
+
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+# Install packages if needed:
+if (!require("quantmod")) install.packages("quantmod")
+if (!require("tidyquant")) install.packages("tidyquant")
+if (!require("ggplot2")) install.packages("ggplot2")
+if (!require("lubridate")) install.packages("lubridate")
+
+library(quantmod)
+library(tidyquant)
+library(ggplot2)
+library(lubridate)
+
+# Input string: "Ticker, Strategy, Expiry, LongStrike, ShortStrike"
+# For this example:
+input_str <- "BABA, BCS, 07/20/2025, 95, 120"
+
+# Split the input string by comma and trim whitespace
+input_parts <- trimws(strsplit(input_str, ",")[[1]])
+
+ticker      <- input_parts[1]
+strategy    <- input_parts[2]  # Not used in computation, but useful for labeling.
+expiry_date <- mdy(input_parts[3])  # Convert to Date (using lubridate)
+long_strike <- as.numeric(input_parts[4])
+short_strike<- as.numeric(input_parts[5])
+
+cat("Ticker:", ticker, "\n")
+cat("Strategy:", strategy, "\n")
+cat("Expiry Date:", expiry_date, "\n")
+cat("Long Strike:", long_strike, "\n")
+cat("Short Strike:", short_strike, "\n")
+
+# Get the current stock price (using quantmod from Yahoo Finance)
+getSymbols(ticker, src = "yahoo", auto.assign = TRUE)
+stock_data <- get(ticker)
+current_price <- as.numeric(last(Cl(stock_data)))
+cat("Current stock price for", ticker, ":", current_price, "\n")
+
+# Get option chain data from Yahoo Finance.
+# Note: getOptionChain returns a list indexed by expiry date.
+opt_chain <- getOptionChain(ticker, src = "yahoo")
+
+# Convert expiry date to character in format "YYYY-MM-DD"
+expiry_str <- as.character(expiry_date)
+if (!expiry_str %in% names(opt_chain)) {
+  stop("No option chain data found for the specified expiry: ", expiry_str)
+}
+
+# Extract the option chain for the given expiry.
+opt_data <- opt_chain[[expiry_str]]$calls  # we assume calls for a bull call spread
+
+# For debugging, view a snippet:
+head(opt_data)
+
+# Extract the last (or mid) prices for the two strikes.
+# Depending on availability, you might choose "Last", "Bid", or "Ask".
+# Here we use the 'Last' price if available.
+long_call_price <- opt_data[as.character(long_strike), "Last"]
+short_call_price <- opt_data[as.character(short_strike), "Last"]
+
+# If Last price is NA, fallback to mid-price using Bid and Ask.
+if (is.na(long_call_price)) {
+  long_call_price <- (opt_data[as.character(long_strike), "Bid"] + opt_data[as.character(long_strike), "Ask"]) / 2
+}
+if (is.na(short_call_price)) {
+  short_call_price <- (opt_data[as.character(short_strike), "Bid"] + opt_data[as.character(short_strike), "Ask"]) / 2
+}
+
+cat("Long call (Strike", long_strike, ") price:", long_call_price, "\n")
+cat("Short call (Strike", short_strike, ") price:", short_call_price, "\n")
+
+# Compute the net debit (cost) for the bull call spread
+net_debit <- long_call_price - short_call_price
+break_even <- long_strike + net_debit
+max_profit <- short_strike - long_strike - net_debit
+
+cat("Net Debit (spread cost):", net_debit, "\n")
+cat("Break-even point:", break_even, "\n")
+cat("Maximum Profit:", max_profit, "\n")
+
+# Create a payoff diagram for the bull call spread.
+# Define a range of underlying prices. We choose a range around the break-even and strikes.
+price_range <- seq(long_strike - 20, short_strike + 20, by = 1)
+
+# Calculate payoff for a bull call spread:
+# Payoff = max(0, underlying - long_strike) - max(0, underlying - short_strike) - net_debit
+payoff <- pmax(0, price_range - long_strike) - pmax(0, price_range - short_strike) - net_debit
+
+# Create a data frame for plotting
+df <- data.frame(Underlying = price_range, Payoff = payoff)
+
+# Plot the payoff diagram and mark current stock price and break-even point
+ggplot(df, aes(x = Underlying, y = Payoff)) +
+  geom_line(color = "blue", size = 1) +
+  geom_vline(xintercept = current_price, color = "darkgreen", linetype = "dashed") +
+  geom_vline(xintercept = break_even, color = "red", linetype = "dashed") +
+  labs(title = paste("Bull Call Spread Payoff for", ticker),
+       subtitle = paste("Long Call at", long_strike, "and Short Call at", short_strike, "expiring", expiry_date),
+       x = "Underlying Price at Expiration",
+       y = "Profit / Loss") +
+  annotate("text", x = current_price, y = max(payoff), label = paste("Current Price =", round(current_price,2)), 
+           angle = 90, vjust = -0.5, color = "darkgreen") +
+  annotate("text", x = break_even, y = max(payoff), label = paste("Break-even =", round(break_even,2)), 
+           angle = 90, vjust = -0.5, color = "red") +
+  theme_minimal()
+
+```
+####             Test working
+###########################################################
+
+
+
+```{r}
+
+# Install packages if needed:
+if (!require("quantmod")) install.packages("quantmod")
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("lubridate")) install.packages("lubridate")
+if (!require("ggplot2")) install.packages("ggplot2")
+
+library(quantmod)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+
+# Define the input string
+input_str <- "LUNR, BCS, 06/20/2025, 95,120"
+
+# Split the input string and trim any whitespace
+input_parts <- str_split(input_str, ",")[[1]] %>% str_trim()
+
+# Parse the input values
+ticker      <- input_parts[1]
+strategy    <- input_parts[2]  # for labeling
+expiry_date <- mdy(input_parts[3])  # convert to Date
+long_strike <- as.numeric(input_parts[4])
+short_strike<- as.numeric(input_parts[5])
+
+cat("Ticker:", ticker, "\n")
+cat("Strategy:", strategy, "\n")
+cat("Expiry Date:", expiry_date, "\n")
+cat("Long Strike:", long_strike, "\n")
+cat("Short Strike:", short_strike, "\n")
+
+
+
+
+# Get the current stock price for the ticker from Yahoo Finance
+getSymbols(ticker, src = "yahoo", auto.assign = TRUE)
+stock_data <- get(ticker)
+current_price <- as.numeric(last(Cl(stock_data)))
+cat("Current stock price for", ticker, ":", current_price, "\n")
+
+# Attempt to get the option chain data.
+# Yahoo Finance's getOptionChain may return only a list with elements "calls" and "puts".
+opt_chain <- tryCatch({
+  getOptionChain(ticker, src = "yahoo")
+}, error = function(e) {
+  cat("Error retrieving option chain data:", e$message, "\n")
+  NULL
+})
+
+if (is.null(opt_chain)) {
+  stop("Option chain data could not be retrieved.")
+}
+
+# Check available keys in the option chain:
+available_keys <- names(opt_chain)
+cat("Available keys in the option chain:", available_keys, "\n")
+
+# If the desired expiry is not available as a key (common for some tickers), use the default chain.
+expiry_str <- as.character(expiry_date)
+if (!(expiry_str %in% available_keys)) {
+  cat("Desired expiry", expiry_str, "not found. Using default chain data ('calls').\n")
+  opt_data <- opt_chain$calls
+} else {
+  opt_data <- opt_chain[[expiry_str]]$calls
+}
+
+# Convert the Strike column to numeric if necessary and set rownames as strikes.
+opt_data <- opt_data %>% mutate(Strike = as.numeric(Strike))
+# For ease of lookup, create a named vector of Last prices keyed by Strike.
+option_prices <- setNames(opt_data$Last, opt_data$Strike)
+
+# Extract prices for our two strikes.
+long_call_price <- option_prices[as.character(long_strike)]
+short_call_price <- option_prices[as.character(short_strike)]
+
+# If a price is missing, try computing a mid-price from Bid and Ask.
+if (is.na(long_call_price) & "Bid" %in% names(opt_data) & "Ask" %in% names(opt_data)) {
+  long_call_price <- (opt_data %>% filter(Strike == long_strike))$Bid +
+                     (opt_data %>% filter(Strike == long_strike))$Ask
+  long_call_price <- long_call_price / 2
+}
+if (is.na(short_call_price) & "Bid" %in% names(opt_data) & "Ask" %in% names(opt_data)) {
+  short_call_price <- (opt_data %>% filter(Strike == short_strike))$Bid +
+                      (opt_data %>% filter(Strike == short_strike))$Ask
+  short_call_price <- short_call_price / 2
+}
+
+cat("Long call (Strike", long_strike, ") price:", long_call_price, "\n")
+cat("Short call (Strike", short_strike, ") price:", short_call_price, "\n")
+
+
+
+
+# Compute the net debit (cost) for the bull call spread:
+net_debit <- long_call_price - short_call_price
+break_even <- long_strike + net_debit
+max_profit <- short_strike - long_strike - net_debit
+
+cat("Net Debit (spread cost):", net_debit, "\n")
+cat("Break-even point:", break_even, "\n")
+cat("Maximum Profit:", max_profit, "\n")
+
+
+# Create a payoff diagram for the bull call spread.
+# Define a range of underlying prices. We choose a range that covers below and above the strikes.
+price_range <- seq(long_strike - 20, short_strike + 20, by = 1)
+
+# Calculate the payoff for the bull call spread:
+# For each underlying price, payoff = max(0, S - long_strike) - max(0, S - short_strike) - net_debit
+payoff <- pmax(0, price_range - long_strike) - pmax(0, price_range - short_strike) - net_debit
+
+df_payoff <- data.frame(Underlying = price_range, Payoff = payoff)
+
+# Plot the payoff diagram
+payoff_plot <- ggplot(df_payoff, aes(x = Underlying, y = Payoff)) +
+  geom_line(color = "blue", size = 1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") +
+  geom_vline(xintercept = current_price, linetype = "dashed", color = "red") +
+  labs(title = paste("Bull Call Spread Payoff for", ticker),
+       subtitle = paste("Long Call at", long_strike, "and Short Call at", short_strike, "expiring", expiry_date),
+       x = "Underlying Price at Expiration (USD)",
+       y = "Profit / Loss (USD)") +
+  theme_minimal() +
+  annotate("text", x = current_price, y = max(payoff), label = paste("Current Price =", round(current_price,2)),
+           angle = 90, vjust = -0.5, color = "red")
+
+print(payoff_plot)
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####             Testing
+###########################################################
+---
+title: "Option Strategy Watch – Current vs. Prediction"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+```{r}
+
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# Load necessary libraries
+if(!require(tidyverse)) install.packages("tidyverse")
+if(!require(quantmod)) install.packages("quantmod")
+if(!require(lubridate)) install.packages("lubridate")
+if(!require(gridExtra)) install.packages("gridExtra")
+if(!require(ggplot2)) install.packages("ggplot2")
+
+library(tidyverse)
+library(quantmod)
+library(lubridate)
+library(gridExtra)
+library(ggplot2)
+
+
+# Create a data frame for our strategies
+strategies <- tibble(
+  Ticker = c("OSCR", "NEM", "LUNR", "MPLX", "PAA", "KULR"),
+  Strategy = c("Naked Call", "Bull Call Spread", "Bull Call Spread", "Naked Call", "Naked Call", "Bull Call Spread"),
+  Expiration = as.Date(c("2027-01-15", "2026-01-16", "2026-01-16", "2027-01-15", "2027-01-15", "2026-01-16")),
+  LongStrike = c(60, 40, 15, 60, 20, 2.5),
+  ShortStrike = c(NA, 55, 25, NA, NA, 10)
+)
+
+print(strategies)
+# Black-Scholes Call Price function
+bs_call <- function(S, K, T, r, sigma) {
+  # S: underlying price, K: strike, T: time (years), r: risk-free rate, sigma: volatility
+  d1 <- (log(S/K) + (r + 0.5 * sigma^2)*T) / (sigma*sqrt(T))
+  d2 <- d1 - sigma*sqrt(T)
+  call_price <- S * pnorm(d1) - K * exp(-r * T) * pnorm(d2)
+  return(call_price)
+}
+
+
+process_strategy <- function(ticker, strategy, expiry, long_strike, short_strike) {
+  # Get current underlying price
+  getSymbols(ticker, src = "yahoo", auto.assign = FALSE) -> stock_data
+  current_stock_price <- as.numeric(last(Cl(stock_data)))
+  
+  # Time to expiration in years
+  T_exp <- as.numeric(expiry - Sys.Date()) / 365
+  
+  # Parameters
+  r <- 0.02      # 2% risk-free rate
+  sigma <- 0.30  # 30% volatility (assumed)
+  
+  if (strategy == "Naked Call") {
+    # Compute theoretical call price for long call at long_strike
+    theo_price <- bs_call(S = current_stock_price, K = long_strike, T = T_exp, r = r, sigma = sigma)
+    # Try to pull market option price via getOptionChain (if available)
+    opt_chain <- tryCatch(getOptionChain(ticker, src = "yahoo"), error = function(e) NULL)
+    if (!is.null(opt_chain) && "calls" %in% names(opt_chain)) {
+      # Use default chain from Yahoo Finance
+      chain <- opt_chain$calls
+      chain <- chain %>% mutate(Strike = as.numeric(Strike))
+      market_price <- chain %>% filter(Strike == long_strike) %>% pull(Last)
+      if(length(market_price)==0 || is.na(market_price)) {
+        market_price <- theo_price
+      }
+    } else {
+      market_price <- theo_price
+    }
+    current_val <- market_price
+    prediction_val <- theo_price
+  } else if (strategy == "Bull Call Spread") {
+    # For bull call spread, compute theoretical call price for long and short legs.
+    theo_long <- bs_call(S = current_stock_price, K = long_strike, T = T_exp, r = r, sigma = sigma)
+    theo_short <- bs_call(S = current_stock_price, K = short_strike, T = T_exp, r = r, sigma = sigma)
+    theo_spread <- theo_long - theo_short
+    
+    # Attempt to get market prices for both legs
+    opt_chain <- tryCatch(getOptionChain(ticker, src = "yahoo"), error = function(e) NULL)
+    if (!is.null(opt_chain) && "calls" %in% names(opt_chain)) {
+      chain <- opt_chain$calls %>% mutate(Strike = as.numeric(Strike))
+      market_long <- chain %>% filter(Strike == long_strike) %>% pull(Last)
+      market_short <- chain %>% filter(Strike == short_strike) %>% pull(Last)
+      if(length(market_long)==0 || is.na(market_long)) { market_long <- theo_long }
+      if(length(market_short)==0 || is.na(market_short)) { market_short <- theo_short }
+      market_spread <- market_long - market_short
+    } else {
+      market_spread <- theo_spread
+    }
+    current_val <- market_spread
+    prediction_val <- theo_spread
+  }
+  
+  # Return a data frame with the results
+  tibble(
+    Ticker = ticker,
+    Strategy = strategy,
+    Expiration = expiry,
+    LongStrike = long_strike,
+    ShortStrike = ifelse(is.na(short_strike), NA, short_strike),
+    CurrentValue = current_val,
+    TheoreticalValue = prediction_val,
+    StockPrice = current_stock_price,
+    TimeToExp = T_exp
+  )
+}
+
+# Process all strategies and combine the results
+results <- pmap_dfr(
+  list(strategies$Ticker, strategies$Strategy, strategies$Expiration, strategies$LongStrike, strategies$ShortStrike),
+  process_strategy
+)
+
+print(results)
+
+
+
+
+# Create a function to produce a plot for one row of results
+plot_strategy <- function(row) {
+  # 'row' is a one-row tibble, so we use row$CurrentValue etc.
+  df <- tibble(
+    Type = c("Current", "Theoretical"),
+    Value = c(row$CurrentValue, row$TheoreticalValue)
+  )
+  p <- ggplot(df, aes(x = Type, y = Value, fill = Type)) +
+    geom_bar(stat = "identity", width = 0.5) +
+    labs(title = paste(row$Ticker, row$Strategy),
+         subtitle = paste("Expiration:", row$Expiration,
+                          "| Stock Price:", round(row$StockPrice, 2),
+                          "| T =", round(row$TimeToExp, 2), "yrs"),
+         y = "Option/Spread Value (USD)") +
+    theme_minimal() +
+    theme(legend.position = "none")
+  return(p)
+}
+
+# Instead of splitting by ticker, split the results by row index:
+plot_list <- results %>% split(1:nrow(results)) %>% map(~ plot_strategy(.x))
+
+# Arrange the plots in a grid (e.g., 3 columns)
+grid.arrange(grobs = plot_list, ncol = 3)
+
+
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+####             Good
+###########################################################
+---
+title: "Option Strategy Watch – Current vs. Theoretical Value"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+```{r}
+
+
+# Install necessary packages if not already installed
+if(!require(tidyverse)) install.packages("tidyverse")
+if(!require(quantmod)) install.packages("quantmod")
+if(!require(lubridate)) install.packages("lubridate")
+if(!require(gridExtra)) install.packages("gridExtra")
+if(!require(ggplot2)) install.packages("ggplot2")
+
+library(tidyverse)
+library(quantmod)
+library(lubridate)
+library(gridExtra)
+library(ggplot2)
+
+
+
+
+# Read the CSV file using file.choose()
+strategies <- read_csv(file.choose(), col_types = cols(
+  Ticker = col_character(),
+  Strategy = col_character(),
+  Expiration = col_date(format = ""),
+  LongStrike = col_double(),
+  ShortStrike = col_double(),
+  LongPut = col_double(),
+  ShortPut = col_double(),
+  ShortCall = col_double(),
+  LongCall2 = col_double()
+))
+print(strategies)
+
+
+bs_call <- function(S, K, T, r, sigma) {
+  d1 <- (log(S/K) + (r + 0.5 * sigma^2) * T) / (sigma * sqrt(T))
+  d2 <- d1 - sigma * sqrt(T)
+  call_price <- S * pnorm(d1) - K * exp(-r * T) * pnorm(d2)
+  return(call_price)
+}
+
+
+process_strategy <- function(ticker, strategy, expiry, long_strike, short_strike) {
+  # Get the underlying stock data
+  stock_data <- tryCatch(getSymbols(ticker, src = "yahoo", auto.assign = FALSE),
+                         error = function(e) NULL)
+  if (is.null(stock_data)) {
+    stop("Could not retrieve stock data for ", ticker)
+  }
+  current_stock_price <- as.numeric(last(Cl(stock_data)))
+  
+  # Calculate time to expiration (in years)
+  T_exp <- as.numeric(expiry - Sys.Date()) / 365
+  if (T_exp <= 0) T_exp <- 1/365  # prevent T=0
+  
+  # Assumed parameters
+  r <- 0.02      # 2% risk-free rate
+  sigma <- 0.30  # 30% volatility
+  
+  if (tolower(strategy) %in% c("naked calls", "naked call")) {
+    theo_price <- bs_call(S = current_stock_price, K = long_strike, T = T_exp, r = r, sigma = sigma)
+    current_val <- theo_price   # In a real scenario, replace with actual market option price
+    prediction_val <- theo_price
+  } else if (tolower(strategy) %in% c("bull call spread", "bull call spread")) {
+    theo_long <- bs_call(S = current_stock_price, K = long_strike, T = T_exp, r = r, sigma = sigma)
+    theo_short <- bs_call(S = current_stock_price, K = short_strike, T = T_exp, r = r, sigma = sigma)
+    theo_spread <- theo_long - theo_short
+    current_val <- theo_spread  # Placeholder for market spread price
+    prediction_val <- theo_spread
+  } else {
+    # For strategies not implemented (e.g., Iron Condor), return NULL
+    return(NULL)
+  }
+  
+  tibble(
+    Ticker = ticker,
+    Strategy = strategy,
+    Expiration = expiry,
+    LongStrike = long_strike,
+    ShortStrike = ifelse(is.na(short_strike), NA, short_strike),
+    StockPrice = current_stock_price,
+    TimeToExp = T_exp,
+    CurrentValue = current_val,
+    TheoreticalValue = prediction_val
+  )
+}
+
+# Process each row in the strategies data frame.
+results <- pmap_dfr(
+  list(strategies$Ticker, strategies$Strategy, strategies$Expiration, strategies$LongStrike, strategies$ShortStrike),
+  process_strategy
+)
+print(results)
+
+
+# Function to create a plot for one strategy (one row of results)
+plot_strategy <- function(row) {
+  df <- tibble(
+    Type = c("Current", "Theoretical"),
+    Value = c(row$CurrentValue, row$TheoreticalValue)
+  )
+  
+  # For Bull Call Spread, define max profit (difference between strikes) and minimum profit (zero)
+  if (tolower(row$Strategy) %in% c("bull call spread", "bull call spread")) {
+    max_profit <- row$ShortStrike - row$LongStrike
+  } else {
+    max_profit <- NA
+  }
+  
+  p <- ggplot(df, aes(x = Type, y = Value, fill = Type)) +
+    geom_bar(stat = "identity", width = 0.5) +
+    labs(title = paste(row$Ticker, row$Strategy),
+         subtitle = paste("Expiration:", row$Expiration,
+                          "| Underlying:", round(row$StockPrice, 2),
+                          "| T =", round(row$TimeToExp, 2), "yrs"),
+         y = "Option/Spread Value (USD)") +
+    theme_minimal() +
+    theme(legend.position = "none")
+  
+  if (!is.na(max_profit)) {
+    p <- p + 
+      geom_hline(yintercept = max_profit, linetype = "dashed", color = "blue") +
+      annotate("text", x = 1.5, y = max_profit, label = paste("Max Profit =", max_profit),
+               vjust = -1, color = "blue")
+  }
+  
+  return(p)
+}
+
+# Split results by row index so that each element is a one-row tibble.
+plot_list <- results %>% split(1:nrow(results)) %>% map(~ plot_strategy(.x))
+
+# Arrange the plots in a grid (e.g., 3 columns).
+grid.arrange(grobs = plot_list, ncol = 3)
+
+
+
+
+
+
+```
+
+
+
+
+
+###########################################################################
+
+#New plots
+
+##############################################################################
+
+
+
+```{r plot-strategies, fig.height=6, fig.width=8, echo=TRUE, warning=FALSE, message=FALSE}
+library(plotly)
+library(htmltools)
+
+# Function to create a plot for one strategy (one row of results)
+plot_strategy <- function(row) {
+  df <- tibble(
+    Type = c("Current", "Theoretical"),
+    Value = c(row$CurrentValue, row$TheoreticalValue)
+  )
+  
+  # For Bull Call Spread, define maximum profit (difference between strikes)
+  if (tolower(row$Strategy) %in% c("bull call spread", "bull call spread")) {
+    max_profit <- row$ShortStrike - row$LongStrike
+  } else {
+    max_profit <- NA
+  }
+  
+  p <- ggplot(df, aes(x = Type, y = Value, fill = Type)) +
+    geom_bar(stat = "identity", width = 0.5) +
+    labs(title = paste(row$Ticker, row$Strategy),
+         subtitle = paste("Expiration:", row$Expiration,
+                          "| Underlying:", round(row$StockPrice,2),
+                          "| T =", round(row$TimeToExp,2), "yrs"),
+         y = "Option/Spread Value (USD)") +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+  
+  if (!is.na(max_profit)) {
+    p <- p + 
+      geom_hline(yintercept = max_profit, linetype = "dashed", color = "blue") +
+      annotate("text", x = 1.5, y = max_profit, label = paste("Max Profit =", max_profit),
+               vjust = -1, color = "blue", size = 5)
+  }
+  
+  return(p)
+}
+
+# Create a list of plots (each row from results becomes one plot)
+plot_list <- results %>% split(1:nrow(results)) %>% map(~ plot_strategy(.x))
+
+# Convert each ggplot to an interactive Plotly plot
+interactive_plots <- lapply(plot_list, ggplotly)
+
+# Combine the interactive plots in a scrollable container using htmltools
+scrollable_container <- div(style = "height:800px; overflow-y: scroll;",
+                            tagList(interactive_plots))
+
+# Print the container so that it appears in the knitted HTML
+scrollable_container
+```
+
+
+
+
+
+
+
+Option Strategy Watch
+This application reads a CSV file with option strategies, processes each strategy to compute a theoretical value using a Black–Scholes call pricing function, and simulates a "current" market price by applying a small random variation to the theoretical value. Then it displays interactive plots (which you can scroll through) for each strategy, showing the Current Value versus Theoretical Value. For Bull Call Spreads, it also shows the maximum profit (i.e. the difference between strikes).
+
+
+---
+title: "Option Strategy Watch – Live Market vs. Theoretical Value"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+```{r plot-strategies, fig.height=6, fig.width=8, echo=TRUE, warning=FALSE, message=FALSE}
+
+# Install necessary packages if not already installed
+if(!require(tidyverse)) install.packages("tidyverse")
+if(!require(quantmod)) install.packages("quantmod")
+if(!require(lubridate)) install.packages("lubridate")
+if(!require(gridExtra)) install.packages("gridExtra")
+if(!require(ggplot2)) install.packages("ggplot2")
+if(!require(plotly)) install.packages("plotly")
+
+library(tidyverse)
+library(quantmod)
+library(lubridate)
+library(gridExtra)
+library(ggplot2)
+library(plotly)
+
+# Read the CSV file using file.choose()
+strategies <- read_csv(file.choose(), col_types = cols(
+  Ticker = col_character(),
+  Strategy = col_character(),
+  Expiration = col_date(format = ""),
+  LongStrike = col_double(),
+  ShortStrike = col_double(),
+  LongPut = col_double(),
+  ShortPut = col_double(),
+  ShortCall = col_double(),
+  LongCall2 = col_double()
+))
+print(strategies)
+
+
+bs_call <- function(S, K, T, r, sigma) {
+  d1 <- (log(S/K) + (r + 0.5 * sigma^2) * T) / (sigma * sqrt(T))
+  d2 <- d1 - sigma * sqrt(T)
+  call_price <- S * pnorm(d1) - K * exp(-r * T) * pnorm(d2)
+  return(call_price)
+}
+
+
+process_strategy <- function(ticker, strategy, expiry, long_strike, short_strike) {
+  # Get underlying stock data and current price
+  stock_data <- tryCatch(getSymbols(ticker, src = "yahoo", auto.assign = FALSE),
+                         error = function(e) NULL)
+  if (is.null(stock_data)) {
+    stop("Could not retrieve stock data for ", ticker)
+  }
+  current_stock_price <- as.numeric(last(Cl(stock_data)))
+  
+  # Calculate days until expiration and time to expiration in years
+  days_until_exp <- as.numeric(expiry - Sys.Date())
+  T_exp <- days_until_exp / 365
+  if (T_exp <= 0) T_exp <- 1/365
+  
+  # Assumed parameters
+  r <- 0.02      # 2% risk-free rate
+  sigma <- 0.30  # 30% volatility
+  
+  strat_lower <- tolower(strategy)
+  if (strat_lower %in% c("naked calls", "naked call")) {
+    # Get option chain data for specified expiry
+    opt_chain <- tryCatch(getOptionChain(ticker, Exp = as.character(expiry), src = "yahoo"),
+                          error = function(e) NULL)
+    if (!is.null(opt_chain) && "calls" %in% names(opt_chain)) {
+      chain <- opt_chain[[as.character(expiry)]]$calls
+      if (is.null(chain) || nrow(chain)==0) {
+        chain <- opt_chain$calls %>% filter(as_date(Expiration)==expiry)
+      }
+    } else {
+      chain <- NULL
+    }
+    
+    if (!is.null(chain) && nrow(chain)>0) {
+      chain <- chain %>% mutate(Strike = as.numeric(Strike))
+      market_long <- chain %>% filter(Strike == long_strike) %>% pull(Last)
+      if (length(market_long)==0 || is.na(market_long)) {
+        current_val <- NA
+      } else {
+        current_val <- market_long[1]
+      }
+    } else {
+      current_val <- NA
+    }
+    
+    theo_price <- bs_call(S = current_stock_price, K = long_strike, T = T_exp, r = r, sigma = sigma)
+    prediction_val <- theo_price
+  } else if (strat_lower %in% c("bull call spread", "bull call spread")) {
+    opt_chain <- tryCatch(getOptionChain(ticker, Exp = as.character(expiry), src = "yahoo"),
+                          error = function(e) NULL)
+    if (!is.null(opt_chain) && "calls" %in% names(opt_chain)) {
+      chain <- opt_chain[[as.character(expiry)]]$calls
+      if (is.null(chain) || nrow(chain)==0) {
+        chain <- opt_chain$calls %>% filter(as_date(Expiration)==expiry)
+      }
+    } else {
+      chain <- NULL
+    }
+    
+    if (!is.null(chain) && nrow(chain)>0) {
+      chain <- chain %>% mutate(Strike = as.numeric(Strike))
+      market_long <- chain %>% filter(Strike == long_strike) %>% pull(Last)
+      market_short <- chain %>% filter(Strike == short_strike) %>% pull(Last)
+      if ((length(market_long)==0 || is.na(market_long)) ||
+          (length(market_short)==0 || is.na(market_short))) {
+        current_val <- NA
+      } else {
+        current_val <- market_long[1] - market_short[1]
+      }
+    } else {
+      current_val <- NA
+    }
+    
+    theo_long <- bs_call(S = current_stock_price, K = long_strike, T = T_exp, r = r, sigma = sigma)
+    theo_short <- bs_call(S = current_stock_price, K = short_strike, T = T_exp, r = r, sigma = sigma)
+    theo_spread <- theo_long - theo_short
+    prediction_val <- theo_spread
+  } else {
+    # For unsupported strategies (e.g., Iron Condor), return NA values.
+    return(tibble(
+      Ticker = ticker,
+      Strategy = strategy,
+      Expiration = expiry,
+      LongStrike = long_strike,
+      ShortStrike = ifelse(is.na(short_strike), NA, short_strike),
+      StockPrice = current_stock_price,
+      DaysToExp = days_until_exp,
+      TimeToExp = T_exp,
+      CurrentValue = NA,
+      TheoreticalValue = NA
+    ))
+  }
+  
+  tibble(
+    Ticker = ticker,
+    Strategy = strategy,
+    Expiration = expiry,
+    LongStrike = long_strike,
+    ShortStrike = ifelse(is.na(short_strike), NA, short_strike),
+    StockPrice = current_stock_price,
+    DaysToExp = days_until_exp,
+    TimeToExp = T_exp,
+    CurrentValue = current_val,
+    TheoreticalValue = prediction_val
+  )
+}
+
+# Process each row from the CSV.
+results <- pmap_dfr(
+  list(strategies$Ticker, strategies$Strategy, strategies$Expiration, strategies$LongStrike, strategies$ShortStrike),
+  process_strategy
+)
+print(results)
+
+
+
+
+
+library(htmltools)
+
+# Function to create a plot for one strategy (one row)
+plot_strategy_func <- function(row) {
+  df <- tibble(
+    Type = c("Current", "Theoretical"),
+    Value = c(row$CurrentValue, row$TheoreticalValue)
+  )
+  
+  # For Bull Call Spread, calculate maximum profit (short strike - long strike)
+  if (tolower(row$Strategy) %in% c("bull call spread", "bull call spread")) {
+    max_profit <- row$ShortStrike - row$LongStrike
+  } else {
+    max_profit <- NA
+  }
+  
+  subtitle_text <- paste("Expiration:", row$Expiration,
+                         "| Days to Exp:", row$DaysToExp,
+                         "| Stock Price: $", round(row$StockPrice, 2),
+                         "| Current = $", ifelse(is.na(row$CurrentValue), "NA", round(row$CurrentValue, 2)),
+                         ", Theoretical = $", round(row$TheoreticalValue, 2))
+  
+  p <- ggplot(df, aes(x = Type, y = Value, fill = Type)) +
+    geom_bar(stat = "identity", width = 0.5) +
+    labs(title = paste(row$Ticker, row$Strategy),
+         subtitle = subtitle_text,
+         y = "Option/Spread Value (USD)") +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+  
+  if (!is.na(max_profit)) {
+    p <- p + 
+      geom_hline(yintercept = max_profit, linetype = "dashed", color = "blue") +
+      annotate("text", x = 1.5, y = max_profit, label = paste("Max Profit =", max_profit),
+               vjust = -1, color = "blue", size = 5)
+  }
+  
+  return(p)
+}
+
+# Split results by row index so each element is a one-row tibble.
+plot_list <- results %>% split(1:nrow(results)) %>% map(~ plot_strategy_func(.x))
+
+# Convert each ggplot to an interactive Plotly plot.
+interactive_plots <- lapply(plot_list, ggplotly)
+
+# Instead of using subplot(), we arrange the interactive plots in a two-column layout using CSS Flexbox.
+# The container is scrollable if the plots exceed the given height.
+final_layout <- div(
+  style = "display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; height:800px; overflow-y: scroll;",
+  lapply(interactive_plots, function(plot_obj) {
+    div(style = "flex: 1 1 45%;", plot_obj)
+  })
+)
+
+# Render the container so it appears in the knitted HTML.
+final_layout
+
+
+
+```
+
+---
+title: "Option Bet Analysis – Live vs. Theoretical Value"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+# Install necessary packages if not already installed
+if(!require(tidyverse)) install.packages("tidyverse")
+if(!require(quantmod)) install.packages("quantmod")
+if(!require(lubridate)) install.packages("lubridate")
+if(!require(gridExtra)) install.packages("gridExtra")
+if(!require(ggplot2)) install.packages("ggplot2")
+if(!require(plotly)) install.packages("plotly")
+
+library(tidyverse)
+library(quantmod)
+library(lubridate)
+library(gridExtra)
+library(ggplot2)
+library(plotly)
+
+# Choose the CSV file interactively
+strategies <- read_csv(file.choose(), col_types = cols(
+  Ticker = col_character(),
+  Strategy = col_character(),
+  Expiration = col_date(format = ""),
+  LongStrike = col_double(),
+  ShortStrike = col_double(),
+  LongPut = col_double(),
+  ShortPut = col_double(),
+  ShortCall = col_double(),
+  LongCall2 = col_double()
+))
+print(strategies)
+
+
+
+
+
+bs_call <- function(S, K, T, r, sigma) {
+  d1 <- (log(S/K) + (r + 0.5 * sigma^2) * T) / (sigma * sqrt(T))
+  d2 <- d1 - sigma * sqrt(T)
+  call_price <- S * pnorm(d1) - K * exp(-r * T) * pnorm(d2)
+  return(call_price)
+}
+
+
+
+process_strategy <- function(ticker, strategy, expiry, long_strike, short_strike) {
+  # Get underlying stock data and current price from Yahoo Finance
+  stock_data <- tryCatch(getSymbols(ticker, src = "yahoo", auto.assign = FALSE),
+                         error = function(e) NULL)
+  if (is.null(stock_data)) {
+    stop("Could not retrieve stock data for ", ticker)
+  }
+  current_stock_price <- as.numeric(last(Cl(stock_data)))
+  
+  # Calculate days until expiration and time to expiration in years
+  days_until_exp <- as.numeric(expiry - Sys.Date())
+  T_exp <- days_until_exp / 365
+  if (T_exp <= 0) T_exp <- 1/365
+  
+  # Assumed parameters for Black–Scholes
+  r <- 0.02      # 2% risk-free rate
+  sigma <- 0.30  # 30% volatility
+  
+  strat_lower <- tolower(strategy)
+  if (strat_lower %in% c("naked calls", "naked call")) {
+    # Get option chain data for the specified expiry
+    opt_chain <- tryCatch(getOptionChain(ticker, Exp = as.character(expiry), src = "yahoo"),
+                          error = function(e) NULL)
+    if (!is.null(opt_chain) && "calls" %in% names(opt_chain)) {
+      chain <- opt_chain[[as.character(expiry)]]$calls
+      if (is.null(chain) || nrow(chain) == 0) {
+        chain <- opt_chain$calls %>% filter(as_date(Expiration) == expiry)
+      }
+    } else {
+      chain <- NULL
+    }
+    
+    if (!is.null(chain) && nrow(chain) > 0) {
+      chain <- chain %>% mutate(Strike = as.numeric(Strike))
+      market_long <- chain %>% filter(Strike == long_strike) %>% pull(Last)
+      if (length(market_long) == 0 || is.na(market_long)) {
+        current_val <- NA
+      } else {
+        current_val <- market_long[1]
+      }
+    } else {
+      current_val <- NA
+    }
+    
+    theo_price <- bs_call(S = current_stock_price, K = long_strike, T = T_exp, r = r, sigma = sigma)
+    prediction_val <- theo_price
+  } else if (strat_lower %in% c("bull call spread", "bull call spread")) {
+    opt_chain <- tryCatch(getOptionChain(ticker, Exp = as.character(expiry), src = "yahoo"),
+                          error = function(e) NULL)
+    if (!is.null(opt_chain) && "calls" %in% names(opt_chain)) {
+      chain <- opt_chain[[as.character(expiry)]]$calls
+      if (is.null(chain) || nrow(chain) == 0) {
+        chain <- opt_chain$calls %>% filter(as_date(Expiration) == expiry)
+      }
+    } else {
+      chain <- NULL
+    }
+    
+    if (!is.null(chain) && nrow(chain) > 0) {
+      chain <- chain %>% mutate(Strike = as.numeric(Strike))
+      market_long <- chain %>% filter(Strike == long_strike) %>% pull(Last)
+      market_short <- chain %>% filter(Strike == short_strike) %>% pull(Last)
+      if ((length(market_long) == 0 || is.na(market_long)) ||
+          (length(market_short) == 0 || is.na(market_short))) {
+        current_val <- NA
+      } else {
+        current_val <- market_long[1] - market_short[1]
+      }
+    } else {
+      current_val <- NA
+    }
+    
+    theo_long <- bs_call(S = current_stock_price, K = long_strike, T = T_exp, r = r, sigma = sigma)
+    theo_short <- bs_call(S = current_stock_price, K = short_strike, T = T_exp, r = r, sigma = sigma)
+    theo_spread <- theo_long - theo_short
+    prediction_val <- theo_spread
+  } else {
+    # For unsupported strategies (e.g., Iron Condor), return NA values.
+    return(tibble(
+      Ticker = ticker,
+      Strategy = strategy,
+      Expiration = expiry,
+      LongStrike = long_strike,
+      ShortStrike = ifelse(is.na(short_strike), NA, short_strike),
+      StockPrice = current_stock_price,
+      DaysToExp = days_until_exp,
+      TimeToExp = T_exp,
+      CurrentValue = NA,
+      TheoreticalValue = NA
+    ))
+  }
+  
+  tibble(
+    Ticker = ticker,
+    Strategy = strategy,
+    Expiration = expiry,
+    LongStrike = long_strike,
+    ShortStrike = ifelse(is.na(short_strike), NA, short_strike),
+    StockPrice = current_stock_price,
+    DaysToExp = days_until_exp,
+    TimeToExp = T_exp,
+    CurrentValue = current_val,
+    TheoreticalValue = prediction_val
+  )
+}
+
+# Process each row from the CSV.
+results <- pmap_dfr(
+  list(strategies$Ticker, strategies$Strategy, strategies$Expiration, strategies$LongStrike, strategies$ShortStrike),
+  process_strategy
+)
+print(results)
+
+
+
+
+
+
+
+
+
+# Function to create a plot for one strategy (one row)
+plot_strategy_func <- function(row) {
+  df <- tibble(
+    Type = c("Current", "Theoretical"),
+    Value = c(row$CurrentValue, row$TheoreticalValue)
+  )
+  
+  # For Bull Call Spreads, calculate maximum profit (short strike - long strike)
+  if (tolower(row$Strategy) %in% c("bull call spread", "bull call spread")) {
+    max_profit <- row$ShortStrike - row$LongStrike
+  } else {
+    max_profit <- NA
+  }
+  
+  subtitle_text <- paste("Expiration:", row$Expiration,
+                         "| Days to Exp:", row$DaysToExp,
+                         "| Stock Price: $", round(row$StockPrice, 2),
+                         "| Current = $", ifelse(is.na(row$CurrentValue), "NA", round(row$CurrentValue, 2)),
+                         ", Theoretical = $", round(row$TheoreticalValue, 2))
+  
+  p <- ggplot(df, aes(x = Type, y = Value, fill = Type)) +
+    geom_bar(stat = "identity", width = 0.5) +
+    labs(title = paste(row$Ticker, row$Strategy),
+         subtitle = subtitle_text,
+         y = "Option/Spread Value (USD)") +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+  
+  if (!is.na(max_profit)) {
+    p <- p + 
+      geom_hline(yintercept = max_profit, linetype = "dashed", color = "blue") +
+      annotate("text", x = 1.5, y = max_profit, label = paste("Max Profit =", max_profit),
+               vjust = -1, color = "blue", size = 5)
+  }
+  
+  return(p)
+}
+
+# Split results by row index so that each element is a one-row tibble.
+plot_list <- results %>% split(1:nrow(results)) %>% map(~ plot_strategy_func(.x))
+
+# Convert each ggplot to an interactive Plotly plot.
+interactive_plots <- lapply(plot_list, ggplotly)
+
+# Arrange plots in a two-column layout using an HTML flex container.
+final_layout <- div(
+  style = "display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; height:800px; overflow-y: scroll;",
+  lapply(interactive_plots, function(plot_obj) {
+    div(style = "flex: 1 1 45%;", plot_obj)
+  })
+)
+
+# Render the container.
+final_layout
+
+
+
+
+
+```
